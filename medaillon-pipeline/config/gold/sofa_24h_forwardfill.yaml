@@ -1,0 +1,81 @@
+# Konfiguration für SOFA-Score mit 24-Stunden-Aggregation und Forward-Fill-Imputation
+
+database:
+  host: localhost
+  port: 5432
+  database: mimic4
+  user: postgres
+  password: postgres
+  schema_input: silver_schema
+  schema_output: gold_schema
+
+input_table: standardized_parameters
+
+# Pivot-Konfiguration
+pivot:
+  index_cols: ['subject_id', 'hadm_id', 'stay_id', 'charttime']
+  value_col: 'value'
+  pivot_col: 'concept_name'
+
+# Aggregations-Konfiguration
+aggregation:
+  time_window: '24H'
+  method: 'mean'
+  offset: '1H'  # Stündlicher Offset für rollende Fenster
+
+# Imputations-Konfiguration
+imputation:
+  method: 'locf'  # Last Observation Carried Forward
+  group_by: ['subject_id', 'hadm_id', 'stay_id']
+  fill_remaining: true
+  fill_method: 'constant'
+  constant_value: 0  # Default-Wert für verbleibende NAs
+
+# Abgeleitete Parameter
+derived_parameters:
+  - name: 'PaO2_FiO2_ratio'
+    formula: '$[3027801] / $[42869590]'  # Oxygen [Partial pressure] in Arterial blood / Oxygen/Gas total [Pure volume fraction] Inhaled gas
+    required_columns: [3027801, 42869590]
+  
+  - name: 'MAP'
+    formula: '($["Systolic blood pressure"] + 2 * $["Diastolic blood pressure"]) / 3'  # (Systolic blood pressure + 2 * Diastolic blood pressure) / 3
+    required_columns: ["Systolic blood pressure", "Diastolic blood pressure"]
+
+# SOFA-Score Komponenten
+clinical_scores:
+  - name: 'SOFA_score'
+    components:
+      - name: 'respiratory'
+        parameter: 'PaO2_FiO2_ratio'
+        thresholds: [400, 300, 200, 100]
+        scores: [0, 1, 2, 3, 4]
+      
+      - name: 'coagulation'
+        parameter: "Platelets"  # 3007461
+        thresholds: [150, 100, 50, 20]
+        scores: [0, 1, 2, 3, 4]
+      
+      - name: 'liver'
+        parameter: "Bilirubin.total"  # 3024128
+        thresholds: [1.2, 2.0, 6.0, 12.0]
+        scores: [0, 1, 2, 3, 4]
+      
+      - name: 'cardiovascular'
+        parameter: 'Mean arterial pressure'  # Verwende den berechneten MAP
+        thresholds: [70, 65]
+        scores: [0, 1, 2, 3, 4]  # Vereinfacht, eigentlich abhängig von Vasopressoren
+      
+      - name: 'cns'
+        parameter: "Glasgow Coma Scale total"  # 3007194
+        thresholds: [14, 12, 9, 5]
+        scores: [0, 1, 2, 3, 4]
+      
+      - name: 'renal'
+        parameter: "Creatinine"  # 3016723
+        thresholds: [1.2, 2.0, 3.5, 5.0]
+        scores: [0, 1, 2, 3, 4]
+
+# Speichern der Teilscores aktivieren
+save_score_components: true
+
+output_table: sofa_24h_forwardfill

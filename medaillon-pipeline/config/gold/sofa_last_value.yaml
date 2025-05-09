@@ -1,0 +1,57 @@
+# Konfiguration für SOFA-Score mit Last-Value-Imputation
+database:
+  schema_input: silver_schema
+  schema_output: gold_schema
+  table_input: standardized_parameters
+  table_output: sofa_last_value
+
+# Pivot-Konfiguration
+pivot:
+  index_cols: ['subject_id', 'charttime']
+  value_col: 'value'
+  pivot_col: 'concept_name'
+
+# Aggregations-Konfiguration
+aggregation:
+  time_window: '24H'
+  method: 'mean'
+
+# Imputations-Konfiguration
+imputation:
+  method: 'last'
+  group_by: ['subject_id']
+
+# Abgeleitete Parameter
+derived_parameters:
+  - name: PaO2_FiO2_ratio
+    formula: $["Oxygen [Partial pressure] in Arterial blood"] / $["Oxygen/Gas total [Pure volume fraction] Inhaled gas"]
+    required_columns: ["Oxygen [Partial pressure] in Arterial blood", "Oxygen/Gas total [Pure volume fraction] Inhaled gas"]
+
+# Klinische Scores
+clinical_scores:
+  - name: SOFA_score
+    components:
+      - name: respiratory
+        parameter: PaO2_FiO2_ratio
+        thresholds: [100, 200, 300, 400]
+        scores: [4, 3, 2, 1, 0]
+      - name: coagulation
+        parameter: Platelets
+        thresholds: [20, 50, 100, 150]
+        scores: [4, 3, 2, 1, 0]
+      - name: liver
+        parameter: Bilirubin.total
+        thresholds: [12, 6, 2, 1.2]
+        scores: [4, 3, 2, 1, 0]
+      - name: cardiovascular
+        parameter: Mean arterial pressure
+        thresholds: [70]
+        scores: [1, 0]
+      - name: cns
+        parameter: Glasgow Coma Scale total
+        thresholds: [6, 9, 12, 14]
+        scores: [4, 3, 2, 1, 0]
+      - name: renal
+        parameter: Creatinine
+        thresholds: [5, 3.5, 2, 1.2]
+        scores: [4, 3, 2, 1, 0]

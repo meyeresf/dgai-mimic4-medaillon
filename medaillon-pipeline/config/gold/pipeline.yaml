@@ -1,0 +1,137 @@
+# Konfiguration für die Gold-Ebene Pipeline
+
+# Eingabe- und Ausgabetabellen
+input_table: standardized_parameters
+output_table: gold_parameters
+
+# Pivot-Konfiguration
+pivot:
+  index_cols: ['subject_id', 'charttime']
+  value_col: 'value'
+  pivot_col: 'concept_name'
+
+# Aggregationskonfiguration
+aggregation:
+  time_window: '1H'  # Zeitfenstergröße: 1 Stunde
+  method: 'mean'     # Aggregationsmethode: Mittelwert
+
+# Imputationskonfiguration
+imputation:
+  method: 'locf'     # Last Observation Carried Forward
+  group_by: ['subject_id']
+  constant_value: 0  # Nur für method='constant'
+
+# Pipeline-Schritte aktivieren/deaktivieren
+pivot_data: true
+aggregate_data: true
+impute_missing_values: true
+calculate_derived_parameters: true
+calculate_clinical_scores: true
+save_score_components: false
+
+# Abgeleitete Parameter
+derived_parameters:
+  - name: 'mean_arterial_pressure'
+    formula: '($blood_pressure_systolic + 2 * $blood_pressure_diastolic) / 3'
+    required_columns: ['blood_pressure_systolic', 'blood_pressure_diastolic']
+  
+  - name: 'shock_index'
+    formula: '$heart_rate / $blood_pressure_systolic'
+    required_columns: ['heart_rate', 'blood_pressure_systolic']
+
+# Klinische Scores
+clinical_scores:
+  - name: 'sofa_respiratory'
+    components:
+      - name: 'pao2_fio2'
+        parameter: 'pao2_fio2_ratio'
+        thresholds: [400, 300, 200, 100]
+        scores: [0, 1, 2, 3, 4]
+  
+  - name: 'sofa_cardiovascular'
+    components:
+      - name: 'map'
+        parameter: 'mean_arterial_pressure'
+        thresholds: [70, 65]
+        scores: [0, 1, 2]
+# Konfiguration für die Gold-Ebene der Datenaufbereitungspipeline
+
+# Datenbankeinstellungen
+database:
+  schema_input: "silver_schema"
+  schema_output: "gold_schema"
+  input_table: "standardized_parameters"
+  output_table: "gold_parameters"
+
+# Pivot-Einstellungen (Long-Format zu Wide-Format)
+pivot:
+  index_cols: ["subject_id", "charttime"]
+  value_col: "value"
+  pivot_col: "concept_name"
+
+# Aggregationseinstellungen
+aggregation:
+  time_window: "1H"  # Stündliche Aggregation
+  method: "mean"     # Mittelwert als Standardaggregation
+
+# Imputationseinstellungen
+imputation:
+  method: "locf"     # Last Observation Carried Forward
+  group_by: ["subject_id"]
+  constant_value: 0  # Nur für die Methode 'constant'
+
+# Abgeleitete Parameter
+derived_parameters:
+  - name: "Mean arterial pressure"
+    formula: "($['Systolic blood pressure'] + 2 * $['Diastolic blood pressure']) / 3"
+    required_columns: ["Systolic blood pressure", "Diastolic blood pressure"]
+    
+  - name: "Shock index"
+    formula: "$['Heart rate'] / $['Systolic blood pressure']"
+    required_columns: ["Heart rate", "Systolic blood pressure"]
+    
+  - name: "PaO2/FiO2 ratio"
+    formula: "$['Oxygen [Partial pressure] in Arterial blood'] / $['Oxygen/Gas total [Pure volume fraction] Inhaled gas']"
+    required_columns: ["Oxygen [Partial pressure] in Arterial blood", "Oxygen/Gas total [Pure volume fraction] Inhaled gas"]
+
+# Klinische Scores
+clinical_scores:
+  - name: "SOFA_score"
+    components:
+      - name: "respiratory"
+        parameter: "PaO2/FiO2 ratio"
+        thresholds: [400, 300, 200, 100]
+        scores: [0, 1, 2, 3, 4]
+        
+      - name: "cardiovascular"
+        parameter: "Mean arterial pressure"
+        thresholds: [70, 65]
+        scores: [0, 1, 2]
+        
+      - name: "liver"
+        parameter: "Bilirubin.total"
+        thresholds: [1.2, 2.0, 6.0, 12.0]
+        scores: [0, 1, 2, 3, 4]
+        
+      - name: "coagulation"
+        parameter: "Platelets"
+        thresholds: [150, 100, 50, 20]
+        scores: [0, 1, 2, 3, 4]
+        
+      - name: "renal"
+        parameter: "Creatinine"
+        thresholds: [1.2, 2.0, 3.5, 5.0]
+        scores: [0, 1, 2, 3, 4]
+        
+      - name: "neurological"
+        parameter: "Glasgow Coma Scale total"
+        thresholds: [15, 13, 10, 6]
+        scores: [0, 1, 2, 3, 4]
+
+# Pipeline-Einstellungen
+pivot_data: true
+aggregate_data: true
+impute_missing_values: true
+calculate_derived_parameters: true
+calculate_clinical_scores: true
+save_score_components: false

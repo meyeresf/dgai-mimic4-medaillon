@@ -1,0 +1,208 @@
+# Konfiguration für die SOFA-Score-Berechnung
+
+# Aggregationseinstellungen
+aggregation:
+  windowsize: "4h"  # Fenstergröße für die Aggregation
+  offset: "1h"      # Offset für die Aggregation
+  aggregate_functions:
+    - concept_id: 3004249  # Systolic blood pressure
+      method: "mean"
+    - concept_id: 3012888  # Diastolic blood pressure
+      method: "mean"
+    - concept_id: 37168599  # Mean arterial pressure
+      method: "mean"
+    - concept_id: 4020553  # Oxygen saturation measurement
+      method: "mean"
+    - concept_id: 45771331  # Temperature
+      method: "mean"
+    - concept_id: 4313591  # Respiratory rate
+      method: "mean"
+    - concept_id: 3007194  # Glasgow Coma Scale total
+      method: "min"
+    - concept_id: 3009094  # Glasgow Coma Scale verbal response
+      method: "min"
+    - concept_id: 3008223  # Glasgow Coma Scale motor response
+      method: "min"
+    - concept_id: 3016335  # Glasgow Coma Scale eye opening
+      method: "min"
+    - concept_id: 3016723  # Creatinine
+      method: "max"
+    - concept_id: 3024128  # Bilirubin.total
+      method: "max"
+    - concept_id: 3027801  # Oxygen [Partial pressure] in Arterial blood
+      method: "min"
+    - concept_id: 3007461  # Platelets
+      method: "min"
+    - concept_id: 3019550  # Sodium
+      method: "mean"
+    - concept_id: 42869590  # Oxygen/Gas total [Pure volume fraction] Inhaled gas
+      method: "mean"
+    - concept_id: 3014315  # Urine output
+      method: "sum"
+    - concept_id: 1337860  # Dopamine
+      method: "max"
+    - concept_id: 1343916  # Epinephrine
+      method: "max"
+    - concept_id: 1321341  # Norepinephrine
+      method: "max"
+    - concept_id: 1337720  # Dobutamine
+      method: "max"
+    - concept_id: 4163858  # Ventilation
+      method: "max"
+    - concept_id: 3004921  # Ventilator mode
+      method: "max"
+    - concept_id: 4224130  # Ventilation status
+      method: "max"
+    - concept_id: 1260097  # ICU admission
+      method: "max"
+
+# Imputationseinstellungen
+imputation:
+  first_level:
+    - concept_id: 3007194  # Glasgow Coma Scale total
+      method: "GCS_from_subscores"
+    - concept_id: 3027801  # Oxygen [Partial pressure] in Arterial blood
+      method: "Pao2_from_Spo2"
+  second_level:
+    - concept_id: 3004249  # Systolic blood pressure
+      method: "forwarding"
+    - concept_id: 3012888  # Diastolic blood pressure
+      method: "forwarding"
+    - concept_id: 37168599  # Mean arterial pressure
+      method: "forwarding"
+    - concept_id: 4020553  # Oxygen saturation measurement
+      method: "forwarding"
+    - concept_id: 45771331  # Temperature
+      method: "forwarding"
+    - concept_id: 4313591  # Respiratory rate
+      method: "forwarding"
+    - concept_id: 3007194  # Glasgow Coma Scale total
+      method: "forwarding"
+    - concept_id: 3016723  # Creatinine
+      method: "forwarding"
+    - concept_id: 3024128  # Bilirubin.total
+      method: "forwarding"
+    - concept_id: 3027801  # Oxygen [Partial pressure] in Arterial blood
+      method: "forwarding"
+    - concept_id: 3007461  # Platelets
+      method: "forwarding"
+    - concept_id: 42869590  # Oxygen/Gas total [Pure volume fraction] Inhaled gas
+      method: "forwarding"
+  third_level:
+    - concept_id: 3004249  # Systolic blood pressure
+      value: 120
+    - concept_id: 3012888  # Diastolic blood pressure
+      value: 70
+    - concept_id: 37168599  # Mean arterial pressure
+      value: 85
+    - concept_id: 4020553  # Oxygen saturation measurement
+      value: 96
+    - concept_id: 45771331  # Temperature
+      value: 37
+    - concept_id: 4313591  # Respiratory rate
+      value: 16
+    - concept_id: 3007194  # Glasgow Coma Scale total
+      value: 15
+    - concept_id: 3016723  # Creatinine
+      value: 1.0
+    - concept_id: 3024128  # Bilirubin.total
+      value: 0.8
+    - concept_id: 3027801  # Oxygen [Partial pressure] in Arterial blood
+      value: 90
+    - concept_id: 3007461  # Platelets
+      value: 200
+    - concept_id: 42869590  # Oxygen/Gas total [Pure volume fraction] Inhaled gas
+      value: 0.21
+    - concept_id: 3014315  # Urine output
+      value: 0
+    - concept_id: 1337860  # Dopamine
+      value: 0
+    - concept_id: 1343916  # Epinephrine
+      value: 0
+    - concept_id: 1321341  # Norepinephrine
+      value: 0
+    - concept_id: 1337720  # Dobutamine
+      value: 0
+    - concept_id: 4163858  # Ventilation
+      value: 0
+
+# Ausreißerbehandlung
+outlier_handling:
+  outliers:
+    - concept_id: 3004249  # Systolic blood pressure
+      valid_low: 50
+      valid_high: 250
+    - concept_id: 3012888  # Diastolic blood pressure
+      valid_low: 20
+      valid_high: 150
+    - concept_id: 37168599  # Mean arterial pressure
+      valid_low: 30
+      valid_high: 180
+    - concept_id: 4020553  # Oxygen saturation measurement
+      valid_low: 50
+      valid_high: 100
+    - concept_id: 45771331  # Temperature
+      valid_low: 30
+      valid_high: 45
+    - concept_id: 4313591  # Respiratory rate
+      valid_low: 4
+      valid_high: 60
+    - concept_id: 3007194  # Glasgow Coma Scale total
+      valid_low: 3
+      valid_high: 15
+    - concept_id: 3009094  # Glasgow Coma Scale verbal response
+      valid_low: 1
+      valid_high: 5
+    - concept_id: 3008223  # Glasgow Coma Scale motor response
+      valid_low: 1
+      valid_high: 6
+    - concept_id: 3016335  # Glasgow Coma Scale eye opening
+      valid_low: 1
+      valid_high: 4
+    - concept_id: 3016723  # Creatinine
+      valid_low: 0.2
+      valid_high: 15
+    - concept_id: 3024128  # Bilirubin.total
+      valid_low: 0.1
+      valid_high: 50
+    - concept_id: 3027801  # Oxygen [Partial pressure] in Arterial blood
+      valid_low: 20
+      valid_high: 500
+    - concept_id: 3007461  # Platelets
+      valid_low: 5
+      valid_high: 1000
+    - concept_id: 42869590  # Oxygen/Gas total [Pure volume fraction] Inhaled gas
+      valid_low: 0.21
+      valid_high: 1.0
+    - concept_id: 3014315  # Urine output
+      valid_low: 0
+      valid_high: 1000
+
+# Konzeptberechnungen
+concept_calculation:
+  calculations:
+    - concept_id: "4163858"  # Ventilation
+      calculate: true
+      order: "begin"
+    - concept_id: "3029880"  # PaO2/FiO2 ratio
+      calculate: true
+      order: "end"
+    - concept_id: "4191836"  # Urine output 24h
+      calculate: true
+      order: "end"
+    - concept_id: "los_hours"  # Length of stay in hours
+      calculate: true
+      order: "end"
+    - concept_id: "1616852"  # SOFA Total Score
+      calculate: true
+      order: "end"
+    - concept_id: "132797"  # Sepsis (prospective)
+      calculate: false
+      order: "end"
+    - concept_id: "-132797"  # Sepsis (retrospective)
+      calculate: false
+      order: "end"
+
+# Leistungseinstellungen
+performance:
+  parallel_tasks: 4

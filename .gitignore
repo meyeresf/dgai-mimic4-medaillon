@@ -1,0 +1,14 @@
+medaillon-pipeline/data
+medaillon-pipeline/venv
+*.pyc
+__pycache__/
+.env
+*.log
+#logs/
+.env
+*.swp
+.idea/
+.vscode/
+#logs/*
+!.gitkeep
+.aider*
