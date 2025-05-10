@@ -364,9 +364,18 @@ class DataPipeline:
                     # Für Spalten mit Namen statt concept_ids
                     if '$["' in formula:
                         formula_with_df = formula.replace('$["', 'result["').replace('"]', '"]')
-                    else:
+                    elif '$[' in formula:
                         # Für concept_ids
                         formula_with_df = formula.replace('$[', 'result["').replace(']', '"]')
+                    else:
+                        # Für einfache Variablen oder direkte Werte
+                        try:
+                            # Versuchen, die Formel direkt auszuwerten (für konstante Werte)
+                            formula_value = eval(formula)
+                            formula_with_df = str(formula_value)
+                        except:
+                            # Ansonsten als Spaltennamen behandeln
+                            formula_with_df = formula
                     
                     print(f"Berechne {name} mit Formel: {formula_with_df}")
                     
@@ -439,50 +448,103 @@ class DataPipeline:
                             param_col = parameter
                             print(f"Parameter als Name gefunden: {param_col}")
                         else:
-                            print(f"Warnung: Parameter {parameter} nicht in Daten gefunden")
+                            print(f"Warnung: Parameter {parameter} nicht in Daten gefunden oder Thresholds/Scores ungültig")
                             continue
+                else:
+                    # Wenn parameter ein Name ist, prüfen wir, ob er in den Spalten existiert
+                    if parameter not in result.columns:
+                        # Versuchen, ähnliche Spalten zu finden
+                        if parameter == "MAP" and "Mean arterial pressure" in result.columns:
+                            param_col = "Mean arterial pressure"
+                            print(f"Parameter {parameter} als 'Mean arterial pressure' gefunden")
+                        # Erweiterte Suche nach Parametern mit ähnlichen Namen
+                        else:
+                            # Suche nach Spalten, die den Parameternamen enthalten
+                            matching_cols = [col for col in result.columns if parameter in col]
+                            if matching_cols:
+                                param_col = matching_cols[0]  # Erste Übereinstimmung verwenden
+                                print(f"Parameter {parameter} als '{param_col}' gefunden (Teilübereinstimmung)")
+                            else:
+                                # Spezielle Zuordnungen für bekannte Parameter
+                                parameter_mappings = {
+                                    "Platelets": ["Platelets [#/volume] in Blood", "Thrombocytes", "Platelet count"],
+                                    "Bilirubin.total": ["Bilirubin.total [Mass/volume] in Serum or Plasma", "Total bilirubin", "Bilirubin"],
+                                    "Creatinine": ["Creatinine [Mass/volume] in Serum or Plasma", "Serum creatinine", "Creatinine level"],
+                                    "PaO2_FiO2_ratio": ["PaO2/FiO2", "P/F ratio", "Oxygen [Partial pressure] in Arterial blood", "PaO2"]
+                                }
+                                
+                                found = False
+                                if parameter in parameter_mappings:
+                                    for alt_name in parameter_mappings[parameter]:
+                                        if alt_name in result.columns:
+                                            param_col = alt_name
+                                            print(f"Parameter {parameter} als '{param_col}' gefunden (Mapping)")
+                                            found = True
+                                            break
+                                
+                                if not found:
+                                    print(f"Warnung: Parameter {parameter} nicht in Daten gefunden oder Thresholds/Scores ungültig")
+                                    continue
                 
                 if param_col in result.columns and len(thresholds) + 1 == len(scores):
                     # Überprüfen, ob die Spalte Werte enthält
                     if result[param_col].notna().sum() == 0:
                         print(f"Warnung: Spalte {param_col} enthält keine Werte")
                         continue
+                
+                    # Überprüfen, ob die Werte im erwarteten Bereich liegen
+                    if component_name == 'respiratory' and result[param_col].max() > 1000:
+                        print(f"Warnung: PaO2/FiO2-Werte ungewöhnlich hoch (max={result[param_col].max()})")
+                    elif component_name == 'coagulation' and result[param_col].max() > 1000:
+                        print(f"Warnung: Thrombozytenwerte ungewöhnlich hoch (max={result[param_col].max()})")
+                    elif component_name == 'liver' and result[param_col].max() > 50:
+                        print(f"Warnung: Bilirubinwerte ungewöhnlich hoch (max={result[param_col].max()})")
+                    elif component_name == 'cardiovascular' and result[param_col].max() > 200:
+                        print(f"Warnung: MAP-Werte ungewöhnlich hoch (max={result[param_col].max()})")
+                    elif component_name == 'renal' and result[param_col].max() > 20:
+                        print(f"Warnung: Kreatininwerte ungewöhnlich hoch (max={result[param_col].max()})")
                     
                     print(f"Berechne SOFA-Komponente {component_name} mit Parameter {param_col}")
                     print(f"Werte in {param_col}: Min={result[param_col].min()}, Max={result[param_col].max()}, Median={result[param_col].median()}")
                     
                     # Score-Komponente berechnen
-                    component_score = pd.Series(scores[-1], index=result.index)
+                    # Standardmäßig mit dem niedrigsten Score (0) initialisieren
+                    component_score = pd.Series(scores[0], index=result.index)
                     
-                    # SOFA-spezifische Logik für verschiedene Komponenten
-                    if component_name == 'respiratory':  # PaO2/FiO2
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] <= threshold
-                            component_score[mask] = scores[i]
+                    # Richtung der Schwellenwerte aus der Konfiguration lesen
+                    direction = component.get('direction', 'descending')
                     
-                    elif component_name == 'coagulation':  # Thrombozyten
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] <= threshold
-                            component_score[mask] = scores[i]
+                    # Standardrichtungen für bekannte SOFA-Komponenten festlegen, falls nicht angegeben
+                    if 'direction' not in component:
+                        if component_name == 'respiratory' or component_name == 'coagulation' or component_name == 'cardiovascular' or component_name == 'cns':
+                            direction = 'descending'  # Niedrigere Werte sind schlechter
+                        elif component_name == 'liver' or component_name == 'renal':
+                            direction = 'ascending'   # Höhere Werte sind schlechter
                     
-                    elif component_name == 'liver':  # Bilirubin
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] >= threshold
-                            component_score[mask] = scores[i]
+                    print(f"Komponente {component_name} verwendet Richtung: {direction}")
                     
-                    elif component_name == 'cardiovascular':  # MAP
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] < threshold
-                            component_score[mask] = scores[i]
-                    
-                    elif component_name == 'cns':  # GCS
-                        # Für GCS ist ein niedrigerer Wert schlechter (höherer SOFA-Score)
-                        # Daher müssen wir die Logik umkehren
-                        for i, threshold in enumerate(thresholds):
-                            # GCS <= threshold bedeutet höherer SOFA-Score
-                            mask = result[param_col] <= threshold
-                            component_score[mask] = scores[i]
+                    # SOFA-spezifische Logik basierend auf der Richtung der Schwellenwerte
+                    if direction == 'ascending':  # Höhere Werte sind schlechter (z.B. Bilirubin, Kreatinin)
+                        # Initialisiere mit dem niedrigsten Score (0)
+                        component_score = pd.Series(scores[0], index=result.index)
                         
+                        # Für jeden Schwellenwert und Score
+                        for i in range(len(thresholds)):
+                            # Wert > Schwellenwert bedeutet höherer SOFA-Score
+                            mask = result[param_col] > thresholds[i]
+                            component_score[mask] = scores[i+1]
+                    else:  # direction == 'descending', Niedrigere Werte sind schlechter (z.B. PaO2/FiO2, Thrombozyten, MAP, GCS)
+                        # Initialisiere mit dem niedrigsten Score (0)
+                        component_score = pd.Series(scores[0], index=result.index)
+                        
+                        # Für jeden Schwellenwert und Score
+                        for i in range(len(thresholds)):
+                            # Wert < Schwellenwert bedeutet höherer SOFA-Score
+                            mask = result[param_col] < thresholds[i]
+                            component_score[mask] = scores[i+1]
+                    
+                    # Spezielle Behandlung für GCS
+                    if component_name == 'cns':
                         # Überprüfen, ob der GCS-Wert plausibel ist
                         # GCS sollte zwischen 3 und 15 liegen
                         invalid_gcs = (result[param_col] < 3) | (result[param_col] > 15)
@@ -491,18 +553,16 @@ class DataPipeline:
                             # Setze ungültige Werte auf NaN, um sie später zu imputieren
                             component_score[invalid_gcs] = np.nan
                     
-                    elif component_name == 'renal':  # Kreatinin
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] >= threshold
-                            component_score[mask] = scores[i]
-                    
-                    else:  # Generische Berechnung für andere Komponenten
-                        for i, threshold in enumerate(thresholds):
-                            mask = result[param_col] <= threshold
-                            component_score[mask] = scores[i]
-                    
                     # Komponente zum Gesamtscore hinzufügen
-                    result[name] += component_score
+                    if name not in result.columns:
+                        result[name] = 0
+                    
+                    # Überprüfen, ob die Komponente gültige Werte hat
+                    if not component_score.isna().all():
+                        result[name] += component_score
+                        print(f"Komponente {component_name} zum Gesamtscore hinzugefügt")
+                    else:
+                        print(f"Warnung: Komponente {component_name} hat keine gültigen Werte und wird nicht zum Gesamtscore hinzugefügt")
                     
                     # Komponente als separate Spalte speichern
                     result[f"{name}_{component_name}"] = component_score
@@ -511,7 +571,19 @@ class DataPipeline:
                     print(f"Warnung: Parameter {param_col} nicht in Daten gefunden oder Thresholds/Scores ungültig")
             
             # Überprüfen des Gesamtscores
-            print(f"SOFA-Gesamtscore berechnet: Min={result[name].min()}, Max={result[name].max()}, Mittelwert={result[name].mean()}")
+            if name in result.columns:
+                # Begrenze den SOFA-Score auf maximal 24 Punkte
+                result[name] = result[name].clip(upper=24)
+                
+                # Überprüfen auf ungewöhnlich hohe Werte
+                high_scores = result[result[name] > 15]
+                if not high_scores.empty:
+                    print(f"Warnung: {len(high_scores)} Einträge haben einen SOFA-Score > 15")
+                    print(f"Beispiel für hohe Scores: {high_scores[name].head()}")
+                
+                print(f"SOFA-Gesamtscore berechnet: Min={result[name].min()}, Max={result[name].max()}, Mittelwert={result[name].mean()}")
+            else:
+                print(f"Warnung: {name} wurde nicht berechnet, da keine Komponenten gefunden wurden")
         
         return result
     

@@ -24,8 +24,8 @@ imputation:
 # Abgeleitete Parameter
 derived_parameters:
   - name: PaO2_FiO2_ratio
-    formula: $["Oxygen [Partial pressure] in Arterial blood"] / $["Oxygen/Gas total [Pure volume fraction] Inhaled gas"]
-    required_columns: ["Oxygen [Partial pressure] in Arterial blood", "Oxygen/Gas total [Pure volume fraction] Inhaled gas"]
+    formula: $["Oxygen [Partial pressure] in Arterial blood"] / 0.21
+    required_columns: ["Oxygen [Partial pressure] in Arterial blood"]
 
 # Klinische Scores
 clinical_scores:
@@ -44,7 +44,7 @@ clinical_scores:
         thresholds: [12, 6, 2, 1.2]
         scores: [4, 3, 2, 1, 0]
       - name: cardiovascular
-        parameter: Mean arterial pressure
+        parameter: MAP
         thresholds: [70]
         scores: [1, 0]
       - name: cns
