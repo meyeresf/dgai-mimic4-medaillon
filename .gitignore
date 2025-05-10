@@ -12,3 +12,5 @@ __pycache__/
 #logs/*
 !.gitkeep
 .aider*
+slides
+notes.md

@@ -46,11 +46,29 @@ Im Verzeichnis `setup` befindet sich eine `docker-compose.yml`-Datei, die Contai
 ```bash
 cd setup
 docker-compose up -d
+
+# Sie sollten in dem Terminal folgendes sehen:
+[+] Running 2/2
+ ✔ Container mimic4-pgadmin Started
+ ✔ Container mimic4-postgres  Started  
+
+# Mit dem Befehl können Sie überprüfen, ob die container laufen:
+docker ps -a
+
+# Die beiden Container mimic4-pgadmin und mimic4-postgres sollten in der Liste erscheinen und der Status zeigen, dass die Container nicht Exited sind, sonder laufen
 ```
 
-Dies startet:
-- PostgreSQL-Server auf Port 5432
+Nachdem die Anwendungen laufen, können Sie über pgAdmin (im Container mimic4-pgadmin) auf die Datenbank (im Container mimic4-postgres) zugreifen.
+
+- PostgreSQL-Server auf Port 5432 (mimic4-postgres)
 - pgAdmin auf Port 5050 (Zugriff über http://localhost:5050)
+
+Besuchen Sie http://localhost:5050 (Anwendung pgAdmin in dem Container auf ihrem Gerät).
+Melden Sie sich an:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+
+Hat alles funktioniert?
 
 ### 2. MIMIC-IV-Daten herunterladen
 
@@ -63,10 +81,10 @@ Dies startet:
 Wir verwenden die Skripte aus dem mimic-code Repository:
 
 ```bash
-# Datenbank erstellen
+# Datenbank erstellen (in dem container mimic4-postgres wird in Postgres eine Datenbank angelegt)
 createdb -h localhost -U postgres mimic4
 
-# Datenbankschema erstellen
+# Datenbankschema erstellen (Abschnitt in der Datenbank)
 cd mimic-code/mimic-iv/buildmimic/postgres
 psql -h localhost -U postgres -d mimic4 -f create.sql
 
@@ -76,10 +94,10 @@ psql -h localhost -U postgres -d mimic4 -v ON_ERROR_STOP=1 -v mimic_data_dir=/Us
 # Alternativ für unkomprimierte Dateien
 # psql -h localhost -U postgres -d mimic4 -v ON_ERROR_STOP=1 -v mimic_data_dir=../../../medaillon-pipeline/data/mimic-iv-clinical-database-demo-2.2 -f load.sql
 
-# Constraints hinzufügen
+# Constraints hinzufügen (Bedingungen, die sicherstellen, dass keine Duplikate etc. vorhanden sind)
 psql -h localhost -U postgres -d mimic4 -v ON_ERROR_STOP=1 -f constraint.sql
 
-# Indizes erstellen
+# Indizes erstellen (steigert die Performance der Datenbank)
 psql -h localhost -U postgres -d mimic4 -v ON_ERROR_STOP=1 -f index.sql
 ```
 
@@ -208,7 +226,11 @@ pgAdmin bietet eine benutzerfreundliche Oberfläche zum Ausführen von SQL-Abfra
 - [MIMIC-Code Repository](https://github.com/MIT-LCP/mimic-code)
 - [PostgreSQL Dokumentation](https://www.postgresql.org/docs/)
 
+
+
 ## Python-Umgebung für die Gold-Ebene (optional)
+
+Dieser Teil ist nicht erforderlich. Stoppen Sie hier.
 
 Für die Gold-Ebene wird Python verwendet. Diesen Schritt können Sie auch zu einem späteren Zeitpunkt durchführen, wenn Sie mit der Gold-Ebene arbeiten möchten.
 
